@@ -54,13 +54,25 @@ public class TaskListApp extends Application {
             Task selectedTask =
                     taskTable.getSelectionModel().getSelectedItem();
 
-            if (selectedTask != null) {
-                manager.setTaskCompleted(
-                        selectedTask.getId(),
-                        true
-                );
-                taskTable.refresh();
+            if (selectedTask == null) {
+                showAlert("Select a task first.");
+                return;
             }
+
+            boolean newStatus = !selectedTask.isCompleted();
+
+            manager.setTaskCompleted(
+                    selectedTask.getId(),
+                    newStatus
+            );
+
+            taskTable.refresh();
+
+            showInfo(
+                    newStatus
+                            ? "Task marked complete."
+                            : "Task marked pending."
+            );
         });
 
         removeButton.setOnAction(event -> {
