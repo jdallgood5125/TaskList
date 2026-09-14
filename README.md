@@ -62,6 +62,18 @@ Try each button in the graphical interface:
 7. Remove a task and test both confirmation options.
 8. Close and reopen the application to confirm saved tasks remain.
 
+## Automated Tests
+
+The project uses JUnit 5 tests for task management and file storage.
+
+Run the tests with Maven:
+
+```text
+mvn test
+```
+
+The tests verify adding tasks, finding tasks, updating tasks, removing tasks, completion status, duplicate-ID protection, and saving/loading task records.
+
 ## Data Storage
 
 Task records are saved locally in `tasks.csv`.
