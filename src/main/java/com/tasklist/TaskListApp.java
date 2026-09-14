@@ -28,11 +28,13 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.stage.Stage;
-
+import javafx.collections.transformation.FilteredList;
+import javafx.scene.layout.VBox;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.List;
+
 
 public class TaskListApp extends Application {
 
@@ -50,7 +52,34 @@ public class TaskListApp extends Application {
         loadTasksFromFile();
 
         TableView<Task> taskTable = createTaskTable();
-        taskTable.setItems(taskItems);
+        FilteredList<Task> filteredTasks =
+                new FilteredList<>(taskItems, task -> true);
+
+        taskTable.setItems(filteredTasks);
+
+        TextField searchField =
+                new TextField();
+
+        searchField.setPromptText(
+                "Search by title or description"
+        );
+
+        searchField.textProperty().addListener(
+                (observable, oldValue, newValue) -> {
+                    String searchText =
+                            newValue.trim().toLowerCase();
+
+                    filteredTasks.setPredicate(task ->
+                            searchText.isEmpty()
+                                    || task.getTitle()
+                                    .toLowerCase()
+                                    .contains(searchText)
+                                    || task.getDescription()
+                                    .toLowerCase()
+                                    .contains(searchText)
+                    );
+                }
+        );
 
         Button addButton = new Button("Add");
         Button updateButton = new Button("Update");
@@ -140,7 +169,13 @@ public class TaskListApp extends Application {
         );
 
         BorderPane layout = new BorderPane();
-        layout.setTop(new Label("Task List"));
+        VBox topSection = new VBox(
+                8,
+                new Label("Task List"),
+                searchField
+        );
+
+        layout.setTop(topSection);
         layout.setCenter(taskTable);
         layout.setBottom(buttonBar);
 
