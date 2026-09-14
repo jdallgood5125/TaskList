@@ -67,9 +67,32 @@ public class TaskListApp extends Application {
             Task selectedTask =
                     taskTable.getSelectionModel().getSelectedItem();
 
-            if (selectedTask != null) {
-                manager.removeTaskById(selectedTask.getId());
-                refreshTasks();
+            if (selectedTask == null) {
+                showAlert("Select a task to remove.");
+                return;
+            }
+
+            Alert confirmation = new Alert(
+                    Alert.AlertType.CONFIRMATION,
+                    "Remove task \"" + selectedTask.getTitle() + "\"?",
+                    ButtonType.OK,
+                    ButtonType.CANCEL
+            );
+
+            confirmation.setTitle("Confirm Removal");
+            confirmation.setHeaderText("Remove Task");
+
+            ButtonType result = confirmation.showAndWait()
+                    .orElse(ButtonType.CANCEL);
+
+            if (result == ButtonType.OK) {
+                boolean removed =
+                        manager.removeTaskById(selectedTask.getId());
+
+                if (removed) {
+                    refreshTasks();
+                    showInfo("Task removed successfully.");
+                }
             }
         });
 
