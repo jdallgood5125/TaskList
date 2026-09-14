@@ -27,7 +27,6 @@ import javafx.scene.control.Dialog;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.GridPane;
-import java.util.Optional;
 
 public class TaskListApp extends Application {
     // Manage tasks and connect them to the table.
@@ -48,6 +47,8 @@ public class TaskListApp extends Application {
         Button refreshButton = new Button("Refresh");
         Button addButton = new Button("Add");
         addButton.setOnAction(event -> addTask());
+        Button updateButton = new Button("Update");
+        updateButton.setOnAction(event -> updateTask(taskTable));
 
         completeButton.setOnAction(event -> {
             Task selectedTask =
@@ -77,6 +78,7 @@ public class TaskListApp extends Application {
         HBox buttonBar = new HBox(
                 10,
                 addButton,
+                updateButton,
                 completeButton,
                 removeButton,
                 refreshButton
@@ -305,6 +307,124 @@ public class TaskListApp extends Application {
         );
         alert.setTitle("Invalid Task");
         alert.showAndWait();
+    }
+
+    // Display a successful operation message.
+    private void showInfo(String message) {
+        Alert alert = new Alert(
+                Alert.AlertType.INFORMATION,
+                message,
+                ButtonType.OK
+        );
+
+        alert.setTitle("Task List");
+        alert.showAndWait();
+    }
+
+    // Display a form for updating the selected task.
+    private void updateTask(TableView<Task> taskTable) {
+        Task selectedTask =
+                taskTable.getSelectionModel().getSelectedItem();
+
+        if (selectedTask == null) {
+            showAlert("Select a task to update.");
+            return;
+        }
+
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Update Task");
+
+        ButtonType updateButtonType = new ButtonType(
+                "Update",
+                ButtonBar.ButtonData.OK_DONE
+        );
+
+        dialog.getDialogPane().getButtonTypes().addAll(
+                updateButtonType,
+                ButtonType.CANCEL
+        );
+
+        TextField titleField =
+                new TextField(selectedTask.getTitle());
+
+        TextArea descriptionField =
+                new TextArea(selectedTask.getDescription());
+
+        TextField dueDateField =
+                new TextField(selectedTask.getDueDate());
+
+        ComboBox<String> priorityBox = new ComboBox<>();
+        priorityBox.getItems().addAll("Low", "Medium", "High");
+        priorityBox.setValue(selectedTask.getPriority());
+
+        GridPane form = new GridPane();
+        form.setHgap(10);
+        form.setVgap(10);
+        form.setPadding(new Insets(15));
+
+        form.add(new Label("Title:"), 0, 0);
+        form.add(titleField, 1, 0);
+
+        form.add(new Label("Description:"), 0, 1);
+        form.add(descriptionField, 1, 1);
+
+        form.add(new Label("Due Date:"), 0, 2);
+        form.add(dueDateField, 1, 2);
+
+        form.add(new Label("Priority:"), 0, 3);
+        form.add(priorityBox, 1, 3);
+
+        dialog.getDialogPane().setContent(form);
+
+        Button updateButton = (Button) dialog.getDialogPane()
+                .lookupButton(updateButtonType);
+
+        updateButton.addEventFilter(
+                ActionEvent.ACTION,
+                event -> {
+                    String title = titleField.getText().trim();
+                    String description =
+                            descriptionField.getText().trim();
+                    String dueDate = dueDateField.getText().trim();
+                    String priority = priorityBox.getValue();
+
+                    if (title.isEmpty()) {
+                        showAlert("Title is required.");
+                        titleField.requestFocus();
+                        event.consume();
+                        return;
+                    }
+
+                    if (description.isEmpty()) {
+                        showAlert("Description is required.");
+                        descriptionField.requestFocus();
+                        event.consume();
+                        return;
+                    }
+
+                    if (dueDate.isEmpty()) {
+                        showAlert("Due date is required.");
+                        dueDateField.requestFocus();
+                        event.consume();
+                        return;
+                    }
+
+                    boolean updated = manager.updateTask(
+                            selectedTask.getId(),
+                            title,
+                            description,
+                            dueDate,
+                            priority
+                    );
+
+                    if (updated) {
+                        refreshTasks();
+                        showInfo("Task updated successfully.");
+                    }
+                }
+        );
+
+        dialog.showAndWait();
     }
 
     // Launch the JavaFX application.
