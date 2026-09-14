@@ -82,12 +82,35 @@ public class TaskListApp extends Application {
         );
 
         Button addButton = new Button("Add");
+        Button viewButton = new Button("View Description");
         Button updateButton = new Button("Update");
         Button completeButton = new Button("Mark Complete");
         Button removeButton = new Button("Remove");
         Button refreshButton = new Button("Refresh");
 
         addButton.setOnAction(event -> addTask());
+
+        viewButton.setOnAction(event -> {
+            Task selectedTask =
+                    taskTable.getSelectionModel().getSelectedItem();
+
+            if (selectedTask == null) {
+                showAlert("Select a task first.");
+                return;
+            }
+
+            Alert descriptionAlert = new Alert(
+                    Alert.AlertType.INFORMATION,
+                    selectedTask.getDescription(),
+                    ButtonType.OK
+            );
+
+            descriptionAlert.setTitle("Task Description");
+            descriptionAlert.setHeaderText(
+                    selectedTask.getTitle()
+            );
+            descriptionAlert.showAndWait();
+        });
 
         updateButton.setOnAction(
                 event -> updateTask(taskTable)
@@ -163,6 +186,7 @@ public class TaskListApp extends Application {
                 10,
                 addButton,
                 updateButton,
+                viewButton,
                 completeButton,
                 removeButton,
                 refreshButton
