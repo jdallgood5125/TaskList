@@ -32,6 +32,7 @@ import javafx.stage.Stage;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.List;
 
 public class TaskListApp extends Application {
 
@@ -39,14 +40,14 @@ public class TaskListApp extends Application {
             DateTimeFormatter.ofPattern("M/d/yyyy");
 
     private final TaskManager manager = new TaskManager();
+    private final TaskFileStorage storage = new TaskFileStorage();
 
     private final ObservableList<Task> taskItems =
             FXCollections.observableArrayList();
 
-    // Build the JavaFX window.
     @Override
     public void start(Stage stage) {
-        loadSampleTasks();
+        loadTasksFromFile();
 
         TableView<Task> taskTable = createTaskTable();
         taskTable.setItems(taskItems);
@@ -79,6 +80,7 @@ public class TaskListApp extends Application {
                     newStatus
             );
 
+            storage.saveTasks(manager.getTasks());
             taskTable.refresh();
 
             showInfo(
@@ -119,6 +121,7 @@ public class TaskListApp extends Application {
                         );
 
                 if (removed) {
+                    storage.saveTasks(manager.getTasks());
                     refreshTasks();
                     showInfo("Task removed successfully.");
                 }
@@ -136,27 +139,22 @@ public class TaskListApp extends Application {
                 refreshButton
         );
 
-        Label title = new Label("Task List");
-
         BorderPane layout = new BorderPane();
-        layout.setTop(title);
+        layout.setTop(new Label("Task List"));
         layout.setCenter(taskTable);
         layout.setBottom(buttonBar);
 
-        Scene scene = new Scene(layout, 850, 500);
-
         stage.setTitle("Task List");
-        stage.setScene(scene);
+        stage.setScene(new Scene(layout, 850, 500));
         stage.show();
     }
 
-    // Create the columns shown in the task table.
+    // Create the task table.
     private TableView<Task> createTaskTable() {
         TableView<Task> table = new TableView<>();
 
         TableColumn<Task, Number> idColumn =
                 new TableColumn<>("ID");
-
         idColumn.setCellValueFactory(cell ->
                 new SimpleIntegerProperty(
                         cell.getValue().getId()
@@ -165,7 +163,6 @@ public class TaskListApp extends Application {
 
         TableColumn<Task, String> titleColumn =
                 new TableColumn<>("Title");
-
         titleColumn.setCellValueFactory(cell ->
                 new SimpleStringProperty(
                         cell.getValue().getTitle()
@@ -174,7 +171,6 @@ public class TaskListApp extends Application {
 
         TableColumn<Task, String> dueDateColumn =
                 new TableColumn<>("Due Date");
-
         dueDateColumn.setCellValueFactory(cell ->
                 new SimpleStringProperty(
                         cell.getValue().getDueDate()
@@ -183,7 +179,6 @@ public class TaskListApp extends Application {
 
         TableColumn<Task, String> priorityColumn =
                 new TableColumn<>("Priority");
-
         priorityColumn.setCellValueFactory(cell ->
                 new SimpleStringProperty(
                         cell.getValue().getPriority()
@@ -192,7 +187,6 @@ public class TaskListApp extends Application {
 
         TableColumn<Task, String> statusColumn =
                 new TableColumn<>("Status");
-
         statusColumn.setCellValueFactory(cell ->
                 new SimpleStringProperty(
                         cell.getValue().isCompleted()
@@ -216,35 +210,50 @@ public class TaskListApp extends Application {
         return table;
     }
 
-    // Add sample tasks for the first interface test.
-    private void loadSampleTasks() {
-        if (manager.getTasks().isEmpty()) {
-            manager.addTask(new Task(
-                    1,
-                    "Finish project outline",
-                    "Write the first draft",
-                    "2026-09-20",
-                    "High"
-            ));
+    // Load saved tasks or create sample tasks.
+    private void loadTasksFromFile() {
+        List<Task> savedTasks = storage.loadTasks();
 
-            manager.addTask(new Task(
-                    2,
-                    "Review JavaFX basics",
-                    "Practice TableView controls",
-                    "2026-09-22",
-                    "Medium"
-            ));
-
-            refreshTasks();
+        if (savedTasks.isEmpty()) {
+            loadSampleTasks();
+            return;
         }
+
+        for (Task task : savedTasks) {
+            manager.addTask(task);
+        }
+
+        refreshTasks();
     }
 
-    // Refresh the observable table data.
+    // Create sample tasks on the first run.
+    private void loadSampleTasks() {
+        manager.addTask(new Task(
+                1,
+                "Finish project outline",
+                "Write the first draft",
+                "9/20/2026",
+                "High"
+        ));
+
+        manager.addTask(new Task(
+                2,
+                "Review JavaFX basics",
+                "Practice TableView controls",
+                "9/22/2026",
+                "Medium"
+        ));
+
+        storage.saveTasks(manager.getTasks());
+        refreshTasks();
+    }
+
+    // Refresh the table data.
     private void refreshTasks() {
         taskItems.setAll(manager.getTasks());
     }
 
-    // Display a form for adding a task.
+    // Display the Add Task form.
     private void addTask() {
         Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle("Add Task");
@@ -279,16 +288,12 @@ public class TaskListApp extends Application {
 
         form.add(new Label("ID:"), 0, 0);
         form.add(idField, 1, 0);
-
         form.add(new Label("Title:"), 0, 1);
         form.add(titleField, 1, 1);
-
         form.add(new Label("Description:"), 0, 2);
         form.add(descriptionField, 1, 2);
-
         form.add(new Label("Due Date:"), 0, 3);
         form.add(dueDatePicker, 1, 3);
-
         form.add(new Label("Priority:"), 0, 4);
         form.add(priorityBox, 1, 4);
 
@@ -313,12 +318,9 @@ public class TaskListApp extends Application {
                         return;
                     }
 
-                    String title =
-                            titleField.getText().trim();
-
+                    String title = titleField.getText().trim();
                     String description =
                             descriptionField.getText().trim();
-
                     LocalDate selectedDate =
                             dueDatePicker.getValue();
 
@@ -343,12 +345,6 @@ public class TaskListApp extends Application {
                         return;
                     }
 
-                    String dueDate =
-                            selectedDate.format(DATE_FORMATTER);
-
-                    String priority =
-                            priorityBox.getValue();
-
                     if (manager.findTaskById(id) != null) {
                         showAlert(
                                 "A task with that ID already exists."
@@ -358,14 +354,18 @@ public class TaskListApp extends Application {
                         return;
                     }
 
+                    String dueDate =
+                            selectedDate.format(DATE_FORMATTER);
+
                     manager.addTask(new Task(
                             id,
                             title,
                             description,
                             dueDate,
-                            priority
+                            priorityBox.getValue()
                     ));
 
+                    storage.saveTasks(manager.getTasks());
                     refreshTasks();
                 }
         );
@@ -373,7 +373,7 @@ public class TaskListApp extends Application {
         dialog.showAndWait();
     }
 
-    // Display a form for updating the selected task.
+    // Display the Update Task form.
     private void updateTask(TableView<Task> taskTable) {
         Task selectedTask =
                 taskTable.getSelectionModel().getSelectedItem();
@@ -438,13 +438,10 @@ public class TaskListApp extends Application {
 
         form.add(new Label("Title:"), 0, 0);
         form.add(titleField, 1, 0);
-
         form.add(new Label("Description:"), 0, 1);
         form.add(descriptionField, 1, 1);
-
         form.add(new Label("Due Date:"), 0, 2);
         form.add(dueDatePicker, 1, 2);
-
         form.add(new Label("Priority:"), 0, 3);
         form.add(priorityBox, 1, 3);
 
@@ -458,10 +455,8 @@ public class TaskListApp extends Application {
                 event -> {
                     String title =
                             titleField.getText().trim();
-
                     String description =
                             descriptionField.getText().trim();
-
                     LocalDate selectedDate =
                             dueDatePicker.getValue();
 
@@ -489,18 +484,16 @@ public class TaskListApp extends Application {
                     String dueDate =
                             selectedDate.format(DATE_FORMATTER);
 
-                    String priority =
-                            priorityBox.getValue();
-
                     boolean updated = manager.updateTask(
                             selectedTask.getId(),
                             title,
                             description,
                             dueDate,
-                            priority
+                            priorityBox.getValue()
                     );
 
                     if (updated) {
+                        storage.saveTasks(manager.getTasks());
                         refreshTasks();
                         showInfo("Task updated successfully.");
                     }
@@ -522,7 +515,7 @@ public class TaskListApp extends Application {
         alert.showAndWait();
     }
 
-    // Display a successful operation message.
+    // Display a success message.
     private void showInfo(String message) {
         Alert alert = new Alert(
                 Alert.AlertType.INFORMATION,
@@ -534,7 +527,7 @@ public class TaskListApp extends Application {
         alert.showAndWait();
     }
 
-    // Launch the JavaFX application.
+    // Launch the application.
     public static void main(String[] args) {
         launch();
     }
